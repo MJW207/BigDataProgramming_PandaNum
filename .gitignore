@@ -1,0 +1,39 @@
+# ── Python ──────────────────────────
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.Python
+.venv/
+venv/
+env/
+
+# ── Jupyter ─────────────────────────
+.ipynb_checkpoints/
+
+# ── 학습 산출물 ─────────────────────
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+features/
+*.npy
+
+# ── 원본 데이터 (대용량, 로컬 보관) ─
+*.zip
+data/facility/images/*
+data/facility/labels/*
+data/outdoor/images/*
+data/outdoor/labels/*
+!data/**/place_*.txt
+
+# ── OS / Editor ─────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ── 임시 / 캐시 ─────────────────────
+*.tmp
+*.log
+.cache/
