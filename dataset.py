@@ -193,18 +193,23 @@ class CropDiseaseDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        s   = self.samples[idx]
-        img = cv2.imread(str(s["img_path"]))
-        if img is None:
-            img = np.zeros((224, 224, 3), dtype=np.uint8)
+        s    = self.samples[idx]
+        path = str(s["img_path"])
+        lbl  = torch.tensor(s["risk_label"], dtype=torch.long)
+
+        # np.fromfile로 바이트 읽기 → cv2.imdecode로 디코딩
+        # cv2.imread 대신 사용하면 Windows 한글 경로 문제 완전 우회
+        img_cv = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if img_cv is not None:
+            img = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
         else:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = Image.fromarray(img)
+            img = Image.new("RGB", (224, 224), (0, 0, 0))
+
         if self.transform:
             img = self.transform(img)
         else:
             img = transforms.ToTensor()(img)
-        return img, torch.tensor(s["risk_label"], dtype=torch.long)
+        return img, lbl
 
 
 # ─────────────────────────────────────────
@@ -333,7 +338,12 @@ def build_dataloaders(
     val_tf   = get_transforms("val",   mean, std, model_ver)
 
     sampler = make_group_weighted_sampler(train_samples, num_samples)
-    common  = dict(num_workers=num_workers, pin_memory=(num_workers > 0))
+    common  = dict(
+        num_workers    = num_workers,
+        pin_memory     = (num_workers > 0),
+        prefetch_factor= 4 if num_workers > 0 else None,
+        persistent_workers = (num_workers > 0),
+    )
 
     loaders = {
         "train": DataLoader(
