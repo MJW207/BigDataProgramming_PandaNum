@@ -1,5 +1,5 @@
 """
-dataset.py v5 — manifest_all.csv 기반 데이터셋
+dataset.py v6 — manifest_all.csv 기반 데이터셋 (zip 직접 읽기)
 
 ■ 데이터 흐름
   로컬 전처리 (preprocess.ipynb):
@@ -7,14 +7,14 @@ dataset.py v5 — manifest_all.csv 기반 데이터셋
   통합 (merge_manifests.ipynb):
     각 작물 zip → manifest_all.csv
   RunPod 업로드:
-    zip 압축 해제 + manifest_all.csv
+    zip 파일 + manifest_all.csv (압축 해제 불필요)
 
 ■ RunPod 디렉터리 구조
   /workspace/data/
     manifest_all.csv
-    facility_02_고추/images/img_0000001.jpg
-    facility_03_단호박/images/img_0000001.jpg
-    outdoor_01_고추/images/img_0000001.jpg
+    facility_02_고추.zip    ← zip 그대로 사용
+    facility_03_단호박.zip
+    outdoor_01_고추.zip
     ...
 
 ■ manifest_all.csv 컬럼
@@ -41,6 +41,8 @@ dataset.py v5 — manifest_all.csv 기반 데이터셋
 """
 
 import csv
+import threading
+import zipfile
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
@@ -51,6 +53,20 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torchvision import transforms
+
+
+# ─────────────────────────────────────────
+# zip 스레드-로컬 캐시 (NUM_WORKERS 멀티프로세스 안전)
+# ─────────────────────────────────────────
+
+_zip_cache = threading.local()
+
+def _get_zip(zip_path: str) -> zipfile.ZipFile:
+    if not hasattr(_zip_cache, 'handles'):
+        _zip_cache.handles = {}
+    if zip_path not in _zip_cache.handles:
+        _zip_cache.handles[zip_path] = zipfile.ZipFile(zip_path, 'r')
+    return _zip_cache.handles[zip_path]
 
 
 # ─────────────────────────────────────────
@@ -105,22 +121,21 @@ def load_manifest(
                 skipped += 1
                 continue
 
-            # group_id가 이미지 폴더명과 동일
-            img_path = data_root / row["group_id"] / "images" / row["file"]
-            if not img_path.exists():
+            # zip 파일 존재 확인 (압축 해제 불필요)
+            zip_path = data_root / f"{row['group_id']}.zip"
+            if not zip_path.exists():
                 skipped += 1
                 continue
 
             samples.append({
-                "img_path":    img_path,
+                "zip_path":    str(zip_path),
+                "inner_path":  f"{row['group_id']}/images/{row['file']}",
                 "risk_label":  risk,
                 "crop_code":   int(row["crop_code"]),
                 "crop_folder": row["crop_folder"],
                 "env":         row["env"],
                 "group_id":    row["group_id"],
                 "group_type":  row["group_type"],
-                # (env, group_id, risk) = WeightedSampler 그룹 키
-                # group_id에 환경 정보가 이미 포함되어 있어 crop_code 중복 문제 없음
                 "group_key":   (row["group_id"], risk),
             })
 
@@ -193,13 +208,12 @@ class CropDiseaseDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        s    = self.samples[idx]
-        path = str(s["img_path"])
-        lbl  = torch.tensor(s["risk_label"], dtype=torch.long)
+        s   = self.samples[idx]
+        lbl = torch.tensor(s["risk_label"], dtype=torch.long)
 
-        # np.fromfile로 바이트 읽기 → cv2.imdecode로 디코딩
-        # cv2.imread 대신 사용하면 Windows 한글 경로 문제 완전 우회
-        img_cv = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)
+        # zip에서 직접 읽기 — 스레드-로컬 캐시로 NUM_WORKERS 안전
+        img_bytes = _get_zip(s["zip_path"]).read(s["inner_path"])
+        img_cv    = cv2.imdecode(np.frombuffer(img_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
         if img_cv is not None:
             img = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
         else:
