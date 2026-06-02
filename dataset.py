@@ -253,8 +253,7 @@ def get_transforms(mode: str, mean=_MEAN, std=_STD,
     size = MODEL_INPUT_SIZE.get(model_ver, 224)
     if mode == "train":
         return transforms.Compose([
-            transforms.Resize((size + 32, size + 32)),
-            transforms.RandomCrop(size),
+            transforms.Resize((size, size)),
             transforms.RandomHorizontalFlip(),
             transforms.RandomVerticalFlip(),
             transforms.RandomRotation(15),
