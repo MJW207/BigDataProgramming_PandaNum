@@ -211,11 +211,24 @@ class CropDiseaseDataset(Dataset):
         s   = self.samples[idx]
         lbl = torch.tensor(s["risk_label"], dtype=torch.long)
 
-        # zip에서 직접 읽기 — 스레드-로컬 캐시로 NUM_WORKERS 안전
-        img_bytes = _get_zip(s["zip_path"]).read(s["inner_path"])
-        img_cv    = cv2.imdecode(np.frombuffer(img_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
-        if img_cv is not None:
-            img = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
+        # 스레드-로컬 캐시 ZipFile로 읽기
+        # KeyError 발생 시 ZipFile 재오픈 후 재시도
+        try:
+            img_bytes = _get_zip(s["zip_path"]).read(s["inner_path"])
+        except KeyError:
+            # 캐시 ZipFile 객체 제거 후 재오픈
+            if hasattr(_zip_cache, 'handles'):
+                _zip_cache.handles.pop(s["zip_path"], None)
+            img_bytes = _get_zip(s["zip_path"]).read(s["inner_path"])
+        except Exception:
+            img_bytes = None
+
+        if img_bytes is not None:
+            img_cv = cv2.imdecode(np.frombuffer(img_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+            if img_cv is not None:
+                img = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
+            else:
+                img = Image.new("RGB", (224, 224), (0, 0, 0))
         else:
             img = Image.new("RGB", (224, 224), (0, 0, 0))
 
