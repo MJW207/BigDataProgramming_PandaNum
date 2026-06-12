@@ -5,6 +5,20 @@
 
 ---
 
+## 제출 저장소 안내
+
+본 저장소는 빅데이터프로그래밍 프로젝트의 코드 제출용 저장소입니다.
+
+- 데이터 전처리 코드: `plan/preprocessing_code/`
+- 모델 구현 코드: `model.py`, `dataset.py`
+- 최종 학습 및 평가 노트북: `experiments/final/crop_disease_notebook_num6_last.ipynb`
+- 반복 실험 노트북 및 하이퍼파라미터 기록: `experiments/runs/`
+- 프로젝트 설계 및 피드백 문서: `docs/`
+
+원본 AI Hub 이미지, 학습된 모델 가중치, 대용량 영상 파일은 용량 문제로 저장소에 포함하지 않습니다. 데이터는 AI Hub에서 별도로 내려받은 뒤 README의 실행 순서에 따라 전처리하여 사용합니다.
+
+---
+
 ## 프로젝트 개요
 
 작물 질병의 **병명**이 아닌 **진행 단계(정상 → 초기 → 중기 → 말기)** 를 분류하는 모델.  
@@ -225,13 +239,23 @@ BigDataProgramming_PandaNum/
 ## 환경 설정
 
 ```bash
-pip install torch torchvision scikit-learn opencv-python matplotlib tqdm
+pip install -r requirements.txt
 ```
 
 GPU 환경 (RunPod 기준):
 - GPU: NVIDIA RTX PRO 4500 Blackwell
 - CUDA: AMP(Mixed Precision) 활성화
 - num_workers=8, prefetch_factor=4
+
+주요 라이브러리:
+
+- PyTorch / torchvision
+- timm
+- OpenCV
+- pandas, numpy
+- scikit-learn
+- matplotlib, seaborn
+- tqdm, Pillow
 
 ---
 
@@ -249,6 +273,14 @@ GPU 환경 (RunPod 기준):
 3. 평가
    동일 노트북 내 시설/노지 분리 평가, held-out 평가, Grad-CAM 시각화
 ```
+
+### 재현 시 주의사항
+
+- AI Hub 원본 데이터는 저장소에 포함되어 있지 않으므로 별도 다운로드가 필요합니다.
+- `config.py` 및 노트북 내부의 데이터 경로는 실행 환경에 맞게 수정해야 합니다.
+- train split에만 `MAX_PER_CLASS=5,000` cap이 적용되며, validation/test/held-out 평가는 원 분포 기준으로 수행합니다.
+- WeightedRandomSampler는 학습 DataLoader에만 적용하고, validation/test/held-out 평가에는 적용하지 않습니다.
+- 최종 코드 기준 FocalLoss gamma는 `3.0`입니다.
 
 ---
 

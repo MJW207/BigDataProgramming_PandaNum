@@ -18,6 +18,7 @@ checkpoints/
 *.ckpt
 features/
 *.npy
+*.mp4
 
 # ── 원본 데이터 (대용량, 로컬 보관) ─
 *.zip
