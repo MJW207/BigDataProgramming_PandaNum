@@ -1,4 +1,4 @@
-# ── Python ──────────────────────────
+# Python
 __pycache__/
 *.py[cod]
 *.so
@@ -8,34 +8,43 @@ __pycache__/
 venv/
 env/
 
-# ── Jupyter ─────────────────────────
+# Jupyter
 .ipynb_checkpoints/
 
-# ── 학습 산출물 ─────────────────────
-checkpoints/
-*.pth
-*.pt
-*.ckpt
-features/
-*.npy
-*.mp4
-
-# ── 원본 데이터 (대용량, 로컬 보관) ─
+# Data and model artifacts
+data/
 *.zip
-data/facility/images/*
-data/facility/labels/*
-data/outdoor/images/*
-data/outdoor/labels/*
-!data/**/place_*.txt
+*.pt
+*.pth
+*.ckpt
+*.npy
+checkpoints/
+features/
 
-# ── OS / Editor ─────────────────────
+# Large/media/report artifacts
+*.mp4
+*.pptx
+*.pdf
+*.xlsx
+*.png
+*.hwp
+*.docx
+
+# Local working folders excluded from submission
+docs/
+experiments/
+plan/
+runpod_result/
+temp/
+데이터확인/
+
+# OS / editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 
-# ── 임시 / 캐시 ─────────────────────
+# Cache/log
 *.tmp
 *.log
 .cache/
-/data
